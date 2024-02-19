@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Summary and Questions</title>
+    <style>
+        .correct { color: green; }
+        .incorrect { color: red; }
+    </style>
+</head>
+<body>
+    <form id="upload-form">
+        <input type="file" id="video-file">
+        <button type="submit">Upload</button>
+    </form>
+    <button id="loading-button" style="display: none;">Loading...</button>
+    <div id="response-container" style="display: none;">
+        <h2>Summary</h2>
+        <p id="summary"></p>
+        <h2>Questions</h2>
+        <div id="questions"></div>
+    </div>
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var videoFile = document.getElementById('video-file').files[0];
+            var formData = new FormData();
+            formData.append('video', videoFile);
+            document.getElementById('loading-button').style.display = 'block';
+            fetch('/generate-questions', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // console.log(data); // Add this line
+
+                document.getElementById('loading-button').style.display = 'none';
+                document.getElementById('response-container').style.display = 'block';
+                document.getElementById('summary').textContent = data.summary;
+                var questionsContainer = document.getElementById('questions');
+                questionsContainer.innerHTML = '';
+                data.questions.forEach(function(question, index) {
+                var questionElement = document.createElement('div');
+                var questionParts = question.text.split('\n');
+                var questionText = questionParts[0];
+                var options = questionParts.slice(1);
+                questionElement.innerHTML = '<strong>' + questionText + '</strong><br>';
+                options.forEach(function(option) {
+                    var optionValue = option.split(')')[0] + ')';
+                    questionElement.innerHTML += '<input type="radio" name="question' + index + '" value="' + option + '"> ' + option + '<br>';
+                });
+                questionElement.innerHTML += '<button onclick="checkAnswer(this, \'' + question.correct_answer + '\')">Check Answer</button>' +
+                    '<span></span>';
+                questionsContainer.appendChild(questionElement);
+            });
+        });
+    });
+
+    function checkAnswer(buttonElement, correctAnswer) {
+    var answerElement = buttonElement.parentElement.querySelector('input[type="radio"]:checked');
+    var resultElement = buttonElement.parentElement.querySelector('span');
+    if (answerElement) {
+        var selectedAnswer = answerElement.value;  // Compare the full option text
+        correctAnswer = correctAnswer.slice(0, -1);  // Remove the last character from the correct answer
+        if (selectedAnswer.toUpperCase() === correctAnswer.toUpperCase()) {
+            resultElement.textContent = 'Correct!';
+            resultElement.className = 'correct';
+        } else {
+            resultElement.textContent = 'Incorrect! Correct answer is ' + correctAnswer;
+            resultElement.className = 'incorrect';
+        }
+    }
+}
+    </script>
+</body>
+</html>
